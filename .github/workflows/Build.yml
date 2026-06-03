@@ -1,7 +1,28 @@
 name: CI build
 
 on:
-  workflow_dispatch: 
+  workflow_dispatch:
+    inputs:
+      build_unix_native:
+        description: 'Build Unix Native (Ubuntu)'
+        required: false
+        default: true
+        type: boolean
+      build_mac_native:
+        description: 'Build Mac Native'
+        required: false
+        default: true
+        type: boolean
+      build_linux_mac:
+        description: 'Build Linux/Mac Cross Platform'
+        required: false
+        default: true
+        type: boolean
+      build_windows:
+        description: 'Build Windows'
+        required: false
+        default: true
+        type: boolean
   push:
   release:
     types:
@@ -9,6 +30,7 @@ on:
 
 jobs:
   build-unix-native:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_unix_native == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -34,6 +56,7 @@ jobs:
       env:
         QT_QPA_PLATFORM: 'offscreen'
   build-mac-native:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_mac_native == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -57,6 +80,7 @@ jobs:
       env:
         QT_QPA_PLATFORM: 'offscreen'
   build-linux-mac:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_linux_mac == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -142,6 +166,7 @@ jobs:
       with:
         files: artifacts/${{steps.artifacts.outputs.outputZip}}
   build-windows:
+    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_windows == 'true' }}
     runs-on: windows-2022
     strategy:
       matrix:
