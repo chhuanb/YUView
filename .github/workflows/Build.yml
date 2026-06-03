@@ -29,8 +29,67 @@ on:
       - created
 
 jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      build_unix_native: ${{ steps.set_platforms.outputs.build_unix_native }}
+      build_mac_native: ${{ steps.set_platforms.outputs.build_mac_native }}
+      build_linux_mac: ${{ steps.set_platforms.outputs.build_linux_mac }}
+      build_windows: ${{ steps.set_platforms.outputs.build_windows }}
+    steps:
+    - name: Set platform targets based on branch name
+      id: set_platforms
+      run: |
+        BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+        echo "Branch name: $BRANCH_NAME"
+        
+        if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+          echo "build_unix_native=${{ github.event.inputs.build_unix_native }}" >> $GITHUB_OUTPUT
+          echo "build_mac_native=${{ github.event.inputs.build_mac_native }}" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=${{ github.event.inputs.build_linux_mac }}" >> $GITHUB_OUTPUT
+          echo "build_windows=${{ github.event.inputs.build_windows }}" >> $GITHUB_OUTPUT
+        elif [[ "$BRANCH_NAME" == "main" || "$BRANCH_NAME" == "master" || "$BRANCH_NAME" == "develop" ]]; then
+          echo "Main branch: building all platforms"
+          echo "build_unix_native=true" >> $GITHUB_OUTPUT
+          echo "build_mac_native=true" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=true" >> $GITHUB_OUTPUT
+          echo "build_windows=true" >> $GITHUB_OUTPUT
+        elif [[ "$BRANCH_NAME" =~ [Ww][Ii][Nn] || "$BRANCH_NAME" =~ [Ww][Ii][Nn][Dd][Oo][Ww][Ss] ]]; then
+          echo "Windows branch: building Windows only"
+          echo "build_unix_native=false" >> $GITHUB_OUTPUT
+          echo "build_mac_native=false" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=false" >> $GITHUB_OUTPUT
+          echo "build_windows=true" >> $GITHUB_OUTPUT
+        elif [[ "$BRANCH_NAME" =~ [Mm][Aa][Cc] || "$BRANCH_NAME" =~ [Mm][Aa][Cc][Oo][Ss] ]]; then
+          echo "Mac branch: building Mac only"
+          echo "build_unix_native=false" >> $GITHUB_OUTPUT
+          echo "build_mac_native=true" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=false" >> $GITHUB_OUTPUT
+          echo "build_windows=false" >> $GITHUB_OUTPUT
+        elif [[ "$BRANCH_NAME" =~ [Ll][Ii][Nn][Uu][Xx] || "$BRANCH_NAME" =~ [Uu][Nn][Ii][Xx] ]]; then
+          echo "Linux branch: building Linux only"
+          echo "build_unix_native=true" >> $GITHUB_OUTPUT
+          echo "build_mac_native=false" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=true" >> $GITHUB_OUTPUT
+          echo "build_windows=false" >> $GITHUB_OUTPUT
+        elif [[ "$BRANCH_NAME" =~ [Aa][Ll][Ll] ]]; then
+          echo "All keyword: building all platforms"
+          echo "build_unix_native=true" >> $GITHUB_OUTPUT
+          echo "build_mac_native=true" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=true" >> $GITHUB_OUTPUT
+          echo "build_windows=true" >> $GITHUB_OUTPUT
+        else
+          echo "Default: building Linux only for feature branches"
+          echo "build_unix_native=true" >> $GITHUB_OUTPUT
+          echo "build_mac_native=false" >> $GITHUB_OUTPUT
+          echo "build_linux_mac=false" >> $GITHUB_OUTPUT
+          echo "build_windows=false" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+  
   build-unix-native:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_unix_native == 'true' }}
+    needs: setup
+    if: ${{ needs.setup.outputs.build_unix_native == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -56,7 +115,8 @@ jobs:
       env:
         QT_QPA_PLATFORM: 'offscreen'
   build-mac-native:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_mac_native == 'true' }}
+    needs: setup
+    if: ${{ needs.setup.outputs.build_mac_native == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -80,7 +140,8 @@ jobs:
       env:
         QT_QPA_PLATFORM: 'offscreen'
   build-linux-mac:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_linux_mac == 'true' }}
+    needs: setup
+    if: ${{ needs.setup.outputs.build_linux_mac == 'true' }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -166,7 +227,8 @@ jobs:
       with:
         files: artifacts/${{steps.artifacts.outputs.outputZip}}
   build-windows:
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.build_windows == 'true' }}
+    needs: setup
+    if: ${{ needs.setup.outputs.build_windows == 'true' }}
     runs-on: windows-2022
     strategy:
       matrix:
