@@ -3866,6 +3866,8 @@ void videoHandlerYUV::savePlaylist(YUViewDomElement &element) const
   element.appendProperiteChild("math.chroma.scale", QString::number(mc.scale));
   element.appendProperiteChild("math.chroma.offset", QString::number(mc.offset));
   element.appendProperiteChild("math.chroma.invert", to_string(mc.invert));
+
+  element.appendProperiteChild("colorConversion", ColorConversionMapper.getName(this->conversionSettings.colorConversion));
 }
 
 void videoHandlerYUV::loadPlaylist(const YUViewDomElement &element)
@@ -3892,6 +3894,14 @@ void videoHandlerYUV::loadPlaylist(const YUViewDomElement &element)
     this->conversionSettings.mathParameters[Component::Chroma].offset = chromaOffset.toInt();
   this->conversionSettings.mathParameters[Component::Chroma].invert =
     (element.findChildValue("math.chroma.invert") == "True");
+
+  auto colorConversionValue = element.findChildValue("colorConversion");
+  if (!colorConversionValue.isEmpty())
+  {
+    auto colorConversion = ColorConversionMapper.getValue(colorConversionValue);
+    if (colorConversion)
+      this->conversionSettings.colorConversion = *colorConversion;
+  }
 }
 
 } // namespace video::yuv
