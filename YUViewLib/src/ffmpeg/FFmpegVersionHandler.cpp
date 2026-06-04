@@ -396,7 +396,7 @@ bool FFmpegVersionHandler::openInput(AVFormatContextWrapper &fmt, QString url)
 {
   AVFormatContext *f_ctx = nullptr;
   int              ret =
-      this->lib.avformat.avformat_open_input(&f_ctx, url.toStdString().c_str(), nullptr, nullptr);
+      this->lib.avformat.avformat_open_input(&f_ctx, url.toUtf8().constData(), nullptr, nullptr);
   if (ret < 0)
   {
     this->log(QString("Error opening file (avformat_open_input). Ret code %1").arg(ret));

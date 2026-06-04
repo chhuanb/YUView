@@ -64,7 +64,11 @@ bool FileSource::openFile(const std::filesystem::path &filePath)
   if (this->isFileOpened && this->srcFile.isOpen())
     this->srcFile.close();
 
+#ifdef Q_OS_WIN
+  this->srcFile.setFileName(QString::fromStdWString(filePath.wstring()));
+#else
   this->srcFile.setFileName(QString::fromStdString(filePath.string()));
+#endif
   this->isFileOpened = this->srcFile.open(QIODevice::ReadOnly);
   if (!this->isFileOpened)
     return false;
