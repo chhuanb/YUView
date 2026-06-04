@@ -95,6 +95,18 @@ QTextEdit
     padding: 2px;
 }
 
+QTreeWidget::item:selected
+{
+    background-color: #highlightColor;
+    color: white;
+}
+
+QTreeWidget::item:selected:!active
+{
+    background-color: #highlightColor;
+    color: white;
+}
+
 QPushButton:disabled,
 QAbstractSpinBox:disabled,
 QLineEdit:disabled,
