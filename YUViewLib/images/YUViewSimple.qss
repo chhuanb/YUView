@@ -19,8 +19,8 @@ QWidget
     /* The default values for all widgets */
     color: #activeColor;
     background-color: #backgroundColor;
-    /*selection-background-color:#DBA800;*/
-    /*selection-color: #BC9000; */
+    selection-background-color: #highlightColor;
+    selection-color: black;
 }
 
 QWidget:disabled
