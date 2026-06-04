@@ -87,6 +87,8 @@ public:
 
   // Open the input file. This will call avformat_open_input and avformat_find_stream_info.
   bool openInput(AVFormatContextWrapper &fmt, QString url);
+  // Close the input file. This will call avformat_close_input.
+  void closeInput(AVFormatContextWrapper &fmt);
   // Try to find a decoder for the given codecID
   AVCodecWrapper findDecoder(AVCodecIDWrapper codecID);
   // Allocate the decoder (avcodec_alloc_context3)

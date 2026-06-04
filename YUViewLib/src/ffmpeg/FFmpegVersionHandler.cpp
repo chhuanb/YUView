@@ -421,6 +421,15 @@ bool FFmpegVersionHandler::openInput(AVFormatContextWrapper &fmt, QString url)
   return true;
 }
 
+void FFmpegVersionHandler::closeInput(AVFormatContextWrapper &fmt)
+{
+  if (fmt)
+  {
+    AVFormatContext *ctx = fmt.getFormatCtx();
+    this->lib.avformat.avformat_close_input(&ctx);
+  }
+}
+
 AVCodecParametersWrapper FFmpegVersionHandler::allocCodecParameters()
 {
   return AVCodecParametersWrapper(this->lib.avcodec.avcodec_parameters_alloc(), libVersion);

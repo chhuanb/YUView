@@ -398,6 +398,9 @@ FileSourceFFmpegFile::~FileSourceFFmpegFile()
 {
   if (this->currentPacket)
     this->ff.freePacket(this->currentPacket);
+  
+  if (this->isFileOpened && this->formatCtx)
+    this->ff.closeInput(this->formatCtx);
 }
 
 bool FileSourceFFmpegFile::openFile(const QString        &filePath,
