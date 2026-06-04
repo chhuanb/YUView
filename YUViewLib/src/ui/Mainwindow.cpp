@@ -827,7 +827,7 @@ void MainWindow::updateSettings()
   else if (themeName == "Default")
   {
     // For Default theme, add selection highlight styling with darker blue
-    styleSheet = "QWidget { selection-background-color: #0078d7; selection-color: white; }";
+    styleSheet = "QWidget { selection-background-color: #1565c0; selection-color: white; }";
   }
   // Set the style sheet. If the string is empty, the default will be used/set.
   qApp->setStyleSheet(styleSheet);
