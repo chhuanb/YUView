@@ -537,6 +537,9 @@ playlistItemRawFile *playlistItemRawFile::newplaylistItemRawFile(const YUViewDom
   newFile->video->loadPlaylist(root);
   playlistItem::loadPropertiesFromPlaylist(root, newFile);
 
+  // Update the frame count after loading the format from the playlist
+  newFile->updateStartEndRange();
+
   return newFile;
 }
 
