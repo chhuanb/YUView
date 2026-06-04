@@ -3898,7 +3898,7 @@ void videoHandlerYUV::loadPlaylist(const YUViewDomElement &element)
   auto colorConversionValue = element.findChildValue("colorConversion");
   if (!colorConversionValue.isEmpty())
   {
-    auto colorConversion = ColorConversionMapper.getValue(colorConversionValue);
+    auto colorConversion = ColorConversionMapper.getValue(colorConversionValue.toStdString());
     if (colorConversion)
       this->conversionSettings.colorConversion = *colorConversion;
   }
