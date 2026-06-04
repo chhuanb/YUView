@@ -460,6 +460,9 @@ bool videoHandlerDifference::hierarchicalPositionYUV(int                        
   const int subH = diffYUVFormat.getSubsamplingHor();
   const int subV = diffYUVFormat.getSubsamplingVer();
 
+  // Check if chroma is present (not YUV_400)
+  const bool chromaPresent = (diffYUVFormat.getSubsampling() != yuv::Subsampling::YUV_400);
+
   // Get the endianness of the inputs
   const bool bigEndian = diffYUVFormat.isBigEndian();
 
@@ -469,7 +472,7 @@ bool videoHandlerDifference::hierarchicalPositionYUV(int                        
 
   // Get pointers to the inputs
   const int componentSizeLuma_In   = w_in * h_in;
-  const int componentSizeChroma_In = (w_in / subH) * (h_in / subV);
+  const int componentSizeChroma_In = chromaPresent ? (w_in / subH) * (h_in / subV) : 0;
   const int nrBytesLumaPlane_In    = bps_in > 8 ? 2 * componentSizeLuma_In : componentSizeLuma_In;
   const int nrBytesChromaPlane_In =
     bps_in > 8 ? 2 * componentSizeChroma_In : componentSizeChroma_In;
@@ -513,7 +516,7 @@ bool videoHandlerDifference::hierarchicalPositionYUV(int                        
         }
 
         // is this a position at which we have a chroma sample?
-        if (subX % subH == 0 && subY % subV == 0 && subX * subV < w_in)
+        if (chromaPresent && subX % subH == 0 && subY % subV == 0 && subX * subV < w_in)
         {
           int valU1 = getValueFromSource(srcU1, subX, bps_in, bigEndian);
           int valV1 = getValueFromSource(srcV1, subX, bps_in, bigEndian);
@@ -530,7 +533,7 @@ bool videoHandlerDifference::hierarchicalPositionYUV(int                        
       srcY1 += stride_in;
 
       // is this a position at which we have a chroma line?
-      if (subY % subV == 0)
+      if (chromaPresent && subY % subV == 0)
       {
         // Goto the next y line
         srcU1 += strideC_in;
