@@ -198,12 +198,6 @@ void PlaylistTreeWidget::dragMoveEvent(QDragMoveEvent *event)
   const auto dropTarget = getDropTarget(event->pos());
 #endif
 
-  if (!dropTarget)
-  {
-    event->ignore();
-    return;
-  }
-
   const auto draggedItems = this->selectedItems();
   if (draggedItems.empty())
   {
@@ -212,6 +206,14 @@ void PlaylistTreeWidget::dragMoveEvent(QDragMoveEvent *event)
   }
 
   const auto draggedItem = dynamic_cast<playlistItem *>(draggedItems[0]);
+
+  if (!dropTarget)
+  {
+    // No specific drop target - allow dropping to reorder/move items
+    // This allows dragging items out of containers
+    QTreeWidget::dragMoveEvent(event);
+    return;
+  }
 
   if (!dropTarget->acceptDrops(draggedItem))
   {
