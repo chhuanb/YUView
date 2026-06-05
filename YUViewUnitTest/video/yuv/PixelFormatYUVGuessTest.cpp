@@ -35,6 +35,7 @@
 #include <filesource/FormatGuessingParameters.h>
 #include <filesource/FrameFormatGuess.h>
 #include <video/yuv/PixelFormatYUVGuess.h>
+#include <video/yuv/videoHandlerYUV.h>
 
 namespace video::yuv::test
 {
@@ -84,6 +85,13 @@ TEST_P(GuessYUVFormatFromFilenameFrameSizeFileSizeDataLayoutAndBitDepth, TestGue
     << parameters.fileInfoForGuess.filename << "' parentFolderName '"
     << parameters.fileInfoForGuess.parentFolderName << "' size "
     << parameters.fileInfoForGuess.fileSize.value_or(-1);
+}
+
+TEST(videoHandlerYUVTest, getFormatAsString_withoutFrameSize_shouldReturnNoFormat)
+{
+  videoHandlerYUV handler;
+
+  EXPECT_FALSE(handler.getFormatAsString());
 }
 
 constexpr auto BYTES_1080P           = 1920 * 1080 * 3 * 6;      // 12 frames 420
