@@ -83,11 +83,7 @@ playlistItemRawFile::playlistItemRawFile(const QString &rawFilePath,
   this->prop.isFileSource          = true;
   this->prop.propertiesWidgetTitle = "Raw File Properties";
 
-#ifdef Q_OS_WIN
-  this->dataSource.openFile(std::filesystem::path(rawFilePath.toStdWString()));
-#else
   this->dataSource.openFile(std::filesystem::path(rawFilePath.toStdString()));
-#endif
 
   if (!this->dataSource.isOk())
   {
@@ -601,11 +597,7 @@ void playlistItemRawFile::getSupportedFileExtensions(QStringList &allExtensions,
 void playlistItemRawFile::reloadItemSource()
 {
   // Reopen the file
-#ifdef Q_OS_WIN
-  this->dataSource.openFile(std::filesystem::path(this->properties().name.toStdWString()));
-#else
   this->dataSource.openFile(std::filesystem::path(this->properties().name.toStdString()));
-#endif
   if (!this->dataSource.isOk())
     // Opening the file failed.
     return;
