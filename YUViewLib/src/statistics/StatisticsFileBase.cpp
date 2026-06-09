@@ -39,7 +39,7 @@ namespace stats
 
 StatisticsFileBase::StatisticsFileBase(const QString &filename)
 {
-  this->file.openFile(std::filesystem::path(filename.toStdString()));
+  this->file.openFile(std::filesystem::path(filename.toUtf8().toStdString()));
   if (!this->file.isOk())
   {
     this->errorMessage = "Error opening file " + filename;
