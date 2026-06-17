@@ -398,6 +398,9 @@ void MoveAndZoomableView::mouseReleaseEvent(QMouseEvent *mouse_event)
       ((mouse_event->button() == Qt::LeftButton && mouseMode == MOUSE_LEFT_MOVE) ||
        (mouse_event->button() == Qt::RightButton && mouseMode == MOUSE_RIGHT_MOVE)))
   {
+    this->setMoveOffset(this->viewDraggingStartOffset +
+                        (mouse_event->pos() - this->viewDraggingMousePosStart));
+
     if (mouse_event->button() == Qt::RightButton && this->viewAction == ViewAction::DRAGGING)
     {
       QMenu menu(this);
@@ -409,8 +412,6 @@ void MoveAndZoomableView::mouseReleaseEvent(QMouseEvent *mouse_event)
 #endif
     }
 
-    this->setMoveOffset(this->viewDraggingStartOffset +
-                        (mouse_event->pos() - this->viewDraggingMousePosStart));
     this->viewAction = ViewAction::NONE;
     this->update();
 
