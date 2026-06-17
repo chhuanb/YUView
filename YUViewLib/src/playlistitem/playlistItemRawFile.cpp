@@ -69,6 +69,11 @@ bool isInExtensions(const QString &testValue, const std::initializer_list<const 
   return it != extensions.end();
 }
 
+bool fileNameRequestsFullRange(const QString &filePath)
+{
+  return QFileInfo(filePath).fileName().contains("FullRange", Qt::CaseInsensitive);
+}
+
 } // namespace
 
 playlistItemRawFile::playlistItemRawFile(const QString &rawFilePath,
@@ -153,6 +158,9 @@ playlistItemRawFile::playlistItemRawFile(const QString &rawFilePath,
     else if (this->rawFormat == video::RawFormat::RGB)
       this->getRGBVideo()->setRGBPixelFormatByName(sourcePixelFormat);
   }
+
+  if (this->rawFormat == video::RawFormat::YUV && fileNameRequestsFullRange(rawFilePath))
+    this->getYUVVideo()->setYUVColorConversion(video::yuv::ColorConversion::BT709_FullRange);
 
   this->updateStartEndRange();
 

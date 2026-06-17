@@ -85,6 +85,11 @@ bool isInputFormatTypeFFmpeg(InputFormat format)
   return format == InputFormat::Libav;
 }
 
+bool fileNameRequestsFullRange(const QString &filePath)
+{
+  return QFileInfo(filePath).fileName().contains("FullRange", Qt::CaseInsensitive);
+}
+
 enum class Codec
 {
   AV1,
@@ -279,6 +284,8 @@ playlistItemCompressedVideo::playlistItemCompressedVideo(const QString &compress
     auto yuvVideo = this->getYUVVideo();
     yuvVideo->setFrameSize(frameSize);
     yuvVideo->setPixelFormatYUV(formatYuv);
+    if (fileNameRequestsFullRange(compressedFilePath))
+      yuvVideo->setYUVColorConversion(video::yuv::ColorConversion::BT709_FullRange);
   }
   else
   {
