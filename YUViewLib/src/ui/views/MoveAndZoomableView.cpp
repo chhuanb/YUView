@@ -82,6 +82,7 @@ void MoveAndZoomableView::addContextMenuActions(QMenu *menu)
       };
 
   addActionToMenu("Zoom to 1:1", &MoveAndZoomableView::resetView, Qt::CTRL | Qt::Key_0);
+  addActionToMenu("Center Image", &MoveAndZoomableView::centerView);
   addActionToMenu("Zoom to Fit", &MoveAndZoomableView::zoomToFit, Qt::CTRL | Qt::Key_9);
   addActionToMenu("Zoom in", &MoveAndZoomableView::zoomIn, Qt::CTRL | Qt::Key_Plus);
   addActionToMenu("Zoom out", &MoveAndZoomableView::zoomOut, Qt::CTRL | Qt::Key_Minus);
@@ -765,6 +766,12 @@ void MoveAndZoomableView::zoomToFitInternal()
 {
   this->setMoveOffset(QPoint(0, 0));
   this->setZoomFactor(1.0);
+  update();
+}
+
+void MoveAndZoomableView::centerViewInternal()
+{
+  this->setMoveOffset(QPoint(0, 0));
   update();
 }
 

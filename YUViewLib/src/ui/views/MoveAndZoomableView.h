@@ -62,6 +62,7 @@ public slots:
   virtual void updateSettings();
 
   void resetView(bool) { this->resetViewInternal(); }
+  void centerView(bool) { this->centerViewInternal(); }
   void zoomToFit(bool) { this->zoomToFitInternal(); }
   void zoomIn(bool) { this->zoom(ZoomMode::IN); }
   void zoomOut(bool) { this->zoom(ZoomMode::OUT); }
@@ -81,6 +82,7 @@ protected:
 
   void         update();
   virtual void resetViewInternal();
+  virtual void centerViewInternal();
   void         updatePaletteIfNeeded();
   QString      paletteBackgroundColorSettingsTag{};
 
