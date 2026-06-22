@@ -262,7 +262,7 @@ std::optional<PixelFormatYUV> checForNVIndicator(const std::string_view         
                                                  const Size                        &frameSize,
                                                  const std::optional<std::int64_t> &fileSize)
 {
-  if (name.find("nv12") != std::string::npos || name.find("YUV_SP420") != std::string::npos)
+  if (name.find("nv12") != std::string::npos || name.find("yuv_sp420") != std::string::npos)
   {
     // This should be a 8 bit semi-planar yuv 4:2:0 file with interleaved UV components and YYYYUV
     // order
@@ -271,7 +271,7 @@ std::optional<PixelFormatYUV> checForNVIndicator(const std::string_view         
       return fmt;
   }
 
-  if (name.find("nv21") != std::string::npos || name.find("YVU_SP420") != std::string::npos)
+  if (name.find("nv21") != std::string::npos || name.find("yvu_sp420") != std::string::npos)
   {
     // This should be a 8 bit semi-planar yuv 4:2:0 file with interleaved UV components and YYYYVU
     // order
