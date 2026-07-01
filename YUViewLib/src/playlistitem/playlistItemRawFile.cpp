@@ -32,6 +32,9 @@
 
 #include "playlistItemRawFile.h"
 
+#include <QCheckBox>
+#include <QComboBox>
+#include <QFormLayout>
 #include <QPainter>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -498,6 +501,43 @@ void playlistItemRawFile::createPropertiesWidget()
   // controls (format,...)
   vAllLaout->addLayout(this->createPlaylistItemControls());
   vAllLaout->addWidget(line);
+
+  auto rotationLayout = new QFormLayout;
+  auto rotationCombo  = new QComboBox;
+  rotationCombo->addItem(tr("No rotation"), 0);
+  rotationCombo->addItem(tr("90 degrees clockwise"), 90);
+  rotationCombo->addItem(tr("180 degrees clockwise"), 180);
+  rotationCombo->addItem(tr("270 degrees clockwise"), 270);
+  rotationCombo->setCurrentIndex(rotationCombo->findData(this->frameRotation));
+  rotationLayout->addRow(tr("Frame rotation"), rotationCombo);
+
+  auto mirrorHorizontalCheckBox = new QCheckBox(tr("Mirror horizontally"));
+  mirrorHorizontalCheckBox->setChecked(this->mirrorHorizontal);
+  rotationLayout->addRow(tr("Mirror transformation"), mirrorHorizontalCheckBox);
+
+  auto mirrorVerticalCheckBox = new QCheckBox(tr("Mirror vertically"));
+  mirrorVerticalCheckBox->setChecked(this->mirrorVertical);
+  rotationLayout->addRow(QString(), mirrorVerticalCheckBox);
+
+  vAllLaout->addLayout(rotationLayout);
+  connect(rotationCombo, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          [this, rotationCombo](int index) {
+            this->frameRotation = rotationCombo->itemData(index).toInt();
+            emit SignalItemChanged(true, RECACHE_NONE);
+          });
+  connect(mirrorHorizontalCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    this->mirrorHorizontal = checked;
+    emit SignalItemChanged(true, RECACHE_NONE);
+  });
+  connect(mirrorVerticalCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    this->mirrorVertical = checked;
+    emit SignalItemChanged(true, RECACHE_NONE);
+  });
+
+  auto rotationLine = new QFrame;
+  rotationLine->setFrameShape(QFrame::HLine);
+  rotationLine->setFrameShadow(QFrame::Sunken);
+  vAllLaout->addWidget(rotationLine);
   vAllLaout->addLayout(this->video->createVideoHandlerControls());
 
   vAllLaout->insertStretch(-1, 1); // Push controls up
@@ -517,6 +557,9 @@ void playlistItemRawFile::savePlaylist(QDomElement &root, const QDir &playlistDi
   d.appendProperiteChild("absolutePath", fileURL.toString());
   d.appendProperiteChild("relativePath", relativePath);
   d.appendProperiteChild(std::string("type"), (rawFormat == video::RawFormat::YUV) ? "YUV" : "RGB");
+  d.appendProperiteChild("frameRotation", QString::number(this->frameRotation));
+  d.appendProperiteChild("mirrorHorizontal", this->mirrorHorizontal ? "1" : "0");
+  d.appendProperiteChild("mirrorVertical", this->mirrorVertical ? "1" : "0");
 
   this->video->savePlaylist(d);
 
@@ -544,6 +587,12 @@ playlistItemRawFile *playlistItemRawFile::newplaylistItemRawFile(const YUViewDom
 
   newFile->video->loadPlaylist(root);
   playlistItem::loadPropertiesFromPlaylist(root, newFile);
+
+  const auto frameRotation = root.findChildValueInt("frameRotation", 0);
+  if (frameRotation == 90 || frameRotation == 180 || frameRotation == 270)
+    newFile->frameRotation = frameRotation;
+  newFile->mirrorHorizontal = root.findChildValueInt("mirrorHorizontal", 0) != 0;
+  newFile->mirrorVertical   = root.findChildValueInt("mirrorVertical", 0) != 0;
 
   // Update the frame count after loading the format from the playlist
   newFile->updateStartEndRange();
@@ -585,8 +634,50 @@ void playlistItemRawFile::slotVideoPropertiesChanged()
 
 ValuePairListSets playlistItemRawFile::getPixelValues(const QPoint &pixelPos, int frameIdx)
 {
+  const auto sourceSize = playlistItemWithVideo::getSize();
+  auto sourcePos = pixelPos;
+
+  const auto displayedSize = this->getSize();
+  if (this->mirrorHorizontal)
+    sourcePos.setX(displayedSize.width() - 1 - sourcePos.x());
+  if (this->mirrorVertical)
+    sourcePos.setY(displayedSize.height() - 1 - sourcePos.y());
+
+  if (this->frameRotation == 90)
+    sourcePos = QPoint(sourcePos.y(), sourceSize.height() - 1 - sourcePos.x());
+  else if (this->frameRotation == 180)
+    sourcePos = QPoint(sourceSize.width() - 1 - sourcePos.x(),
+                       sourceSize.height() - 1 - sourcePos.y());
+  else if (this->frameRotation == 270)
+    sourcePos = QPoint(sourceSize.width() - 1 - sourcePos.y(), sourcePos.x());
   return ValuePairListSets((rawFormat == video::RawFormat::YUV) ? "YUV" : "RGB",
-                           video->getPixelValues(pixelPos, frameIdx));
+                           video->getPixelValues(sourcePos, frameIdx));
+}
+
+QSize playlistItemRawFile::getSize() const
+{
+  const auto sourceSize = playlistItemWithVideo::getSize();
+  return (this->frameRotation == 90 || this->frameRotation == 270)
+           ? sourceSize.transposed()
+           : sourceSize;
+}
+
+void playlistItemRawFile::drawItem(QPainter *painter,
+                                   int frameIdx,
+                                   double zoomFactor,
+                                   bool drawRawValues)
+{
+  if (this->frameRotation == 0 && !this->mirrorHorizontal && !this->mirrorVertical)
+  {
+    playlistItemWithVideo::drawItem(painter, frameIdx, zoomFactor, drawRawValues);
+    return;
+  }
+
+  painter->save();
+  painter->scale(this->mirrorHorizontal ? -1.0 : 1.0, this->mirrorVertical ? -1.0 : 1.0);
+  painter->rotate(this->frameRotation);
+  playlistItemWithVideo::drawItem(painter, frameIdx, zoomFactor, drawRawValues);
+  painter->restore();
 }
 
 void playlistItemRawFile::getSupportedFileExtensions(QStringList &allExtensions,

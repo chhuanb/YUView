@@ -68,6 +68,10 @@ public:
 
   virtual bool canBeUsedInProcessing() const override { return true; }
 
+  virtual QSize getSize() const override;
+  virtual void
+  drawItem(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawValues) override;
+
   virtual ValuePairListSets getPixelValues(const QPoint &pixelPos, int frameIdx) override;
 
   // Add the file type filters and the extensions of files that we can load.
@@ -117,4 +121,8 @@ private:
   QList<uint64_t> y4mFrameIndices;
 
   std::optional<std::string> pixelFormatAfterLoading{};
+
+  int frameRotation{};
+  bool mirrorHorizontal{};
+  bool mirrorVertical{};
 };
