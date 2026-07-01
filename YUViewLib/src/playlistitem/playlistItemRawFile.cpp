@@ -35,6 +35,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QFormLayout>
+#include <QGroupBox>
 #include <QPainter>
 #include <QUrl>
 #include <QVBoxLayout>
@@ -501,8 +502,10 @@ void playlistItemRawFile::createPropertiesWidget()
   // controls (format,...)
   vAllLaout->addLayout(this->createPlaylistItemControls());
   vAllLaout->addWidget(line);
+  vAllLaout->addLayout(this->video->createVideoHandlerControls());
 
-  auto rotationLayout = new QFormLayout;
+  auto transformationGroup = new QGroupBox(tr("Display transformation"));
+  auto rotationLayout      = new QFormLayout(transformationGroup);
   auto rotationCombo  = new QComboBox;
   rotationCombo->addItem(tr("No rotation"), 0);
   rotationCombo->addItem(tr("90 degrees clockwise"), 90);
@@ -519,7 +522,6 @@ void playlistItemRawFile::createPropertiesWidget()
   mirrorVerticalCheckBox->setChecked(this->mirrorVertical);
   rotationLayout->addRow(QString(), mirrorVerticalCheckBox);
 
-  vAllLaout->addLayout(rotationLayout);
   connect(rotationCombo, qOverload<int>(&QComboBox::currentIndexChanged), this,
           [this, rotationCombo](int index) {
             this->frameRotation = rotationCombo->itemData(index).toInt();
@@ -534,11 +536,7 @@ void playlistItemRawFile::createPropertiesWidget()
     emit SignalItemChanged(true, RECACHE_NONE);
   });
 
-  auto rotationLine = new QFrame;
-  rotationLine->setFrameShape(QFrame::HLine);
-  rotationLine->setFrameShadow(QFrame::Sunken);
-  vAllLaout->addWidget(rotationLine);
-  vAllLaout->addLayout(this->video->createVideoHandlerControls());
+  vAllLaout->addWidget(transformationGroup);
 
   vAllLaout->insertStretch(-1, 1); // Push controls up
 }
@@ -558,8 +556,8 @@ void playlistItemRawFile::savePlaylist(QDomElement &root, const QDir &playlistDi
   d.appendProperiteChild("relativePath", relativePath);
   d.appendProperiteChild(std::string("type"), (rawFormat == video::RawFormat::YUV) ? "YUV" : "RGB");
   d.appendProperiteChild("frameRotation", QString::number(this->frameRotation));
-  d.appendProperiteChild("mirrorHorizontal", this->mirrorHorizontal ? "1" : "0");
-  d.appendProperiteChild("mirrorVertical", this->mirrorVertical ? "1" : "0");
+  d.appendProperiteChild("mirrorHorizontal", QString::number(this->mirrorHorizontal));
+  d.appendProperiteChild("mirrorVertical", QString::number(this->mirrorVertical));
 
   this->video->savePlaylist(d);
 
