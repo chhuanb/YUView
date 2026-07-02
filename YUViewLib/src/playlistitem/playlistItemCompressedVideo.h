@@ -74,6 +74,8 @@ public:
   virtual InfoData getInfo() const override;
   virtual void     infoListButtonPressed(int buttonID) override;
 
+  virtual QSize getSize() const override;
+
   // Draw the compressed item using the given painter and zoom factor.
   virtual void
   drawItem(QPainter *painter, int frameIdx, double zoomFactor, bool drawRawData) override;
@@ -172,6 +174,10 @@ protected:
 
   // The current frame index of the decoders (interactive/caching)
   int currentFrameIdx[2]{-1, -1};
+
+  int  frameRotation{};
+  bool mirrorHorizontal{};
+  bool mirrorVertical{};
 
   // Seek the input file to the given position, reset the decoder and prepare it to start decoding
   // from the given position.

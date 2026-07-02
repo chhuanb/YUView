@@ -32,10 +32,15 @@
 
 #include "playlistItemImageFile.h"
 
+#include <QCheckBox>
+#include <QComboBox>
+#include <QFormLayout>
+#include <QGroupBox>
 #include <QImageReader>
 #include <QPainter>
 #include <QSettings>
 #include <QUrl>
+#include <QVBoxLayout>
 
 #include <common/Formatting.h>
 #include <common/Functions.h>
@@ -97,6 +102,9 @@ void playlistItemImageFile::savePlaylist(QDomElement &root, const QDir &playlist
   // Append all the properties of the raw file (the path to the file. Relative and absolute)
   d.appendProperiteChild("absolutePath", fileURL.toString());
   d.appendProperiteChild("relativePath", relativePath);
+  d.appendProperiteChild("frameRotation", QString::number(this->frameRotation));
+  d.appendProperiteChild("mirrorHorizontal", QString::number(this->mirrorHorizontal));
+  d.appendProperiteChild("mirrorVertical", QString::number(this->mirrorVertical));
 
   root.appendChild(d);
 }
@@ -122,6 +130,12 @@ playlistItemImageFile::newplaylistItemImageFile(const YUViewDomElement &root,
   // Load the propertied of the playlistItemIndexed
   playlistItem::loadPropertiesFromPlaylist(root, newImage);
 
+  const auto frameRotation = root.findChildValueInt("frameRotation", 0);
+  if (frameRotation == 90 || frameRotation == 180 || frameRotation == 270)
+    newImage->frameRotation = frameRotation;
+  newImage->mirrorHorizontal = root.findChildValueInt("mirrorHorizontal", 0) != 0;
+  newImage->mirrorVertical   = root.findChildValueInt("mirrorVertical", 0) != 0;
+
   return newImage;
 }
 
@@ -142,7 +156,21 @@ void playlistItemImageFile::drawItem(QPainter *painter, int, double zoomFactor, 
     painter->drawText(textRect, IMAGEFILE_ERROR_TEXT);
   }
   else if (!this->imageLoading)
+  {
+    const auto transformed =
+      this->frameRotation != 0 || this->mirrorHorizontal || this->mirrorVertical;
+    if (transformed)
+    {
+      painter->save();
+      painter->scale(this->mirrorHorizontal ? -1.0 : 1.0, this->mirrorVertical ? -1.0 : 1.0);
+      painter->rotate(this->frameRotation);
+    }
+
     frame.drawFrame(painter, zoomFactor, drawRawData);
+
+    if (transformed)
+      painter->restore();
+  }
 }
 
 ItemLoadingState playlistItemImageFile::needsLoading(int, bool)
@@ -181,8 +209,26 @@ void playlistItemImageFile::getSupportedFileExtensions(QStringList &allExtension
 
 ValuePairListSets playlistItemImageFile::getPixelValues(const QPoint &pixelPos, int)
 {
+  const auto frameSize = frame.getFrameSize();
+  const QSize sourceSize(frameSize.width, frameSize.height);
+  auto sourcePos = pixelPos;
+
+  const auto displayedSize = this->getSize();
+  if (this->mirrorHorizontal)
+    sourcePos.setX(displayedSize.width() - 1 - sourcePos.x());
+  if (this->mirrorVertical)
+    sourcePos.setY(displayedSize.height() - 1 - sourcePos.y());
+
+  if (this->frameRotation == 90)
+    sourcePos = QPoint(sourcePos.y(), sourceSize.height() - 1 - sourcePos.x());
+  else if (this->frameRotation == 180)
+    sourcePos = QPoint(sourceSize.width() - 1 - sourcePos.x(),
+                       sourceSize.height() - 1 - sourcePos.y());
+  else if (this->frameRotation == 270)
+    sourcePos = QPoint(sourceSize.width() - 1 - sourcePos.y(), sourcePos.x());
+
   ValuePairListSets newSet;
-  newSet.append("RGB", frame.getPixelValues(pixelPos, -1));
+  newSet.append("RGB", frame.getPixelValues(sourcePos, -1));
   return newSet;
 }
 
@@ -211,7 +257,56 @@ InfoData playlistItemImageFile::getInfo() const
 QSize playlistItemImageFile::getSize() const
 {
   auto s = frame.getFrameSize();
-  return QSize(s.width, s.height);
+  const QSize sourceSize(s.width, s.height);
+  return (this->frameRotation == 90 || this->frameRotation == 270)
+           ? sourceSize.transposed()
+           : sourceSize;
+}
+
+void playlistItemImageFile::createPropertiesWidget()
+{
+  Q_ASSERT_X(
+    !this->propertiesWidget, "createPropertiesWidget", "Properties widget already exists");
+
+  this->preparePropertiesWidget(QStringLiteral("playlistItemImageFile"));
+
+  auto layout = new QVBoxLayout(this->propertiesWidget.get());
+  layout->addLayout(this->createPlaylistItemControls());
+
+  auto transformationGroup  = new QGroupBox(tr("Display transformation"));
+  auto transformationLayout = new QFormLayout(transformationGroup);
+  auto rotationCombo        = new QComboBox;
+  rotationCombo->addItem(tr("No rotation"), 0);
+  rotationCombo->addItem(tr("90 degrees clockwise"), 90);
+  rotationCombo->addItem(tr("180 degrees clockwise"), 180);
+  rotationCombo->addItem(tr("270 degrees clockwise"), 270);
+  rotationCombo->setCurrentIndex(rotationCombo->findData(this->frameRotation));
+  transformationLayout->addRow(tr("Frame rotation"), rotationCombo);
+
+  auto mirrorHorizontalCheckBox = new QCheckBox(tr("Mirror horizontally"));
+  mirrorHorizontalCheckBox->setChecked(this->mirrorHorizontal);
+  transformationLayout->addRow(tr("Mirror transformation"), mirrorHorizontalCheckBox);
+
+  auto mirrorVerticalCheckBox = new QCheckBox(tr("Mirror vertically"));
+  mirrorVerticalCheckBox->setChecked(this->mirrorVertical);
+  transformationLayout->addRow(QString(), mirrorVerticalCheckBox);
+
+  layout->addWidget(transformationGroup);
+  layout->insertStretch(-1, 1);
+
+  connect(rotationCombo, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          [this, rotationCombo](int index) {
+            this->frameRotation = rotationCombo->itemData(index).toInt();
+            emit SignalItemChanged(true, RECACHE_NONE);
+          });
+  connect(mirrorHorizontalCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    this->mirrorHorizontal = checked;
+    emit SignalItemChanged(true, RECACHE_NONE);
+  });
+  connect(mirrorVerticalCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    this->mirrorVertical = checked;
+    emit SignalItemChanged(true, RECACHE_NONE);
+  });
 }
 
 void playlistItemImageFile::updateSettings()

@@ -90,6 +90,8 @@ private slots:
   void fileSystemWatcherFileChanged(const QString &);
 
 private:
+  virtual void createPropertiesWidget() override;
+
   // The frame handler that draws the frame
   video::FrameHandler frame;
 
@@ -99,4 +101,8 @@ private:
   // Does the image need to be loaded? Is it currently loading?
   bool              needToLoadImage{true};
   std::atomic<bool> imageLoading{false};
+
+  int  frameRotation{};
+  bool mirrorHorizontal{};
+  bool mirrorVertical{};
 };

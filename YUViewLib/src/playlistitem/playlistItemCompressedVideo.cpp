@@ -32,6 +32,9 @@
 
 #include "playlistItemCompressedVideo.h"
 
+#include <QCheckBox>
+#include <QFormLayout>
+#include <QGroupBox>
 #include <QInputDialog>
 #include <QPlainTextEdit>
 #include <QThread>
@@ -417,6 +420,9 @@ void playlistItemCompressedVideo::savePlaylist(QDomElement &root, const QDir &pl
 
   d.appendProperiteChild("inputFormat", InputFormatMapper.getName(this->inputFormat));
   d.appendProperiteChild("decoder", DecoderEngineMapper.getName(this->decoderEngine));
+  d.appendProperiteChild("frameRotation", QString::number(this->frameRotation));
+  d.appendProperiteChild("mirrorHorizontal", QString::number(this->mirrorHorizontal));
+  d.appendProperiteChild("mirrorVertical", QString::number(this->mirrorVertical));
 
   if (this->video)
     this->video->savePlaylist(d);
@@ -469,6 +475,12 @@ playlistItemCompressedVideo::newPlaylistItemCompressedVideo(const YUViewDomEleme
     n = n.nextSibling();
   }
   playlistItem::loadPropertiesFromPlaylist(root, newFile);
+
+  const auto frameRotation = root.findChildValueInt("frameRotation", 0);
+  if (frameRotation == 90 || frameRotation == 180 || frameRotation == 270)
+    newFile->frameRotation = frameRotation;
+  newFile->mirrorHorizontal = root.findChildValueInt("mirrorHorizontal", 0) != 0;
+  newFile->mirrorVertical   = root.findChildValueInt("mirrorVertical", 0) != 0;
 
   return newFile;
 }
@@ -600,8 +612,20 @@ void playlistItemCompressedVideo::drawItem(QPainter *painter,
   }
   else if (frameIdx >= range.first && frameIdx <= range.second)
   {
+    const auto transformed =
+      this->frameRotation != 0 || this->mirrorHorizontal || this->mirrorVertical;
+    if (transformed)
+    {
+      painter->save();
+      painter->scale(this->mirrorHorizontal ? -1.0 : 1.0, this->mirrorVertical ? -1.0 : 1.0);
+      painter->rotate(this->frameRotation);
+    }
+
     this->video->drawFrame(painter, frameIdx, zoomFactor, drawRawData);
     stats::paintStatisticsData(painter, this->statisticsData, frameIdx, zoomFactor);
+
+    if (transformed)
+      painter->restore();
   }
 }
 
@@ -942,9 +966,29 @@ void playlistItemCompressedVideo::createPropertiesWidget()
   ui.verticalLayout->insertLayout(0, createPlaylistItemControls());
   ui.verticalLayout->insertWidget(1, lineOne.release());
   ui.verticalLayout->insertLayout(2, video->createVideoHandlerControls(true));
-  ui.verticalLayout->insertWidget(5, lineTwo.release());
+
+  auto transformationGroup  = new QGroupBox(tr("Display transformation"));
+  auto transformationLayout = new QFormLayout(transformationGroup);
+  auto rotationCombo        = new QComboBox;
+  rotationCombo->addItem(tr("No rotation"), 0);
+  rotationCombo->addItem(tr("90 degrees clockwise"), 90);
+  rotationCombo->addItem(tr("180 degrees clockwise"), 180);
+  rotationCombo->addItem(tr("270 degrees clockwise"), 270);
+  rotationCombo->setCurrentIndex(rotationCombo->findData(this->frameRotation));
+  transformationLayout->addRow(tr("Frame rotation"), rotationCombo);
+
+  auto mirrorHorizontalCheckBox = new QCheckBox(tr("Mirror horizontally"));
+  mirrorHorizontalCheckBox->setChecked(this->mirrorHorizontal);
+  transformationLayout->addRow(tr("Mirror transformation"), mirrorHorizontalCheckBox);
+
+  auto mirrorVerticalCheckBox = new QCheckBox(tr("Mirror vertically"));
+  mirrorVerticalCheckBox->setChecked(this->mirrorVertical);
+  transformationLayout->addRow(QString(), mirrorVerticalCheckBox);
+
+  ui.verticalLayout->insertWidget(5, transformationGroup);
+  ui.verticalLayout->insertWidget(6, lineTwo.release());
   ui.verticalLayout->insertLayout(
-    6, this->statisticsUIHandler.createStatisticsHandlerControls(), 1);
+    7, this->statisticsUIHandler.createStatisticsHandlerControls(), 1);
 
   // Set the components that we can display
   if (loadingDecoder)
@@ -968,6 +1012,19 @@ void playlistItemCompressedVideo::createPropertiesWidget()
                 QOverload<int>::of(&QComboBox::currentIndexChanged),
                 this,
                 &playlistItemCompressedVideo::decoderComboxBoxChanged);
+  connect(rotationCombo, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          [this, rotationCombo](int index) {
+            this->frameRotation = rotationCombo->itemData(index).toInt();
+            emit SignalItemChanged(true, RECACHE_NONE);
+          });
+  connect(mirrorHorizontalCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    this->mirrorHorizontal = checked;
+    emit SignalItemChanged(true, RECACHE_NONE);
+  });
+  connect(mirrorVerticalCheckBox, &QCheckBox::toggled, this, [this](bool checked) {
+    this->mirrorVertical = checked;
+    emit SignalItemChanged(true, RECACHE_NONE);
+  });
 }
 
 bool playlistItemCompressedVideo::allocateDecoder(int displayComponent)
@@ -1143,11 +1200,36 @@ ValuePairListSets playlistItemCompressedVideo::getPixelValues(const QPoint &pixe
 {
   ValuePairListSets newSet;
 
-  newSet.append("YUV", this->video->getPixelValues(pixelPos, frameIdx));
+  const auto sourceSize = playlistItemWithVideo::getSize();
+  auto sourcePos = pixelPos;
+
+  const auto displayedSize = this->getSize();
+  if (this->mirrorHorizontal)
+    sourcePos.setX(displayedSize.width() - 1 - sourcePos.x());
+  if (this->mirrorVertical)
+    sourcePos.setY(displayedSize.height() - 1 - sourcePos.y());
+
+  if (this->frameRotation == 90)
+    sourcePos = QPoint(sourcePos.y(), sourceSize.height() - 1 - sourcePos.x());
+  else if (this->frameRotation == 180)
+    sourcePos = QPoint(sourceSize.width() - 1 - sourcePos.x(),
+                       sourceSize.height() - 1 - sourcePos.y());
+  else if (this->frameRotation == 270)
+    sourcePos = QPoint(sourceSize.width() - 1 - sourcePos.y(), sourcePos.x());
+
+  newSet.append("YUV", this->video->getPixelValues(sourcePos, frameIdx));
   if (this->loadingDecoder->statisticsSupported() && this->loadingDecoder->statisticsEnabled())
-    newSet.append("Stats", this->statisticsData.getValuesAt(pixelPos));
+    newSet.append("Stats", this->statisticsData.getValuesAt(sourcePos));
 
   return newSet;
+}
+
+QSize playlistItemCompressedVideo::getSize() const
+{
+  const auto sourceSize = playlistItemWithVideo::getSize();
+  return (this->frameRotation == 90 || this->frameRotation == 270)
+           ? sourceSize.transposed()
+           : sourceSize;
 }
 
 void playlistItemCompressedVideo::getSupportedFileExtensions(QStringList &allExtensions,
